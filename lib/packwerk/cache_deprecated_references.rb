@@ -5,14 +5,12 @@ require "sorbet-runtime"
 
 require "packwerk/deprecated_references"
 require "packwerk/reference"
-require "packwerk/reference_lister"
 require "packwerk/violation_type"
 
 module Packwerk
   class CacheDeprecatedReferences
     extend T::Sig
     extend T::Helpers
-    include ReferenceLister
     abstract!
 
     sig do
@@ -27,14 +25,36 @@ module Packwerk
     end
 
     sig do
-      params(reference: Packwerk::Reference, violation_type: ViolationType)
-        .returns(T::Boolean)
-        .override
+      params(reference_offense: Packwerk::ReferenceOffense).void
     end
-    def listed?(reference, violation_type:)
-      deprecated_references = deprecated_references_for(reference.source_package)
-      deprecated_references.add_entries(reference, violation_type.serialize)
-      true
+    def add_offense(reference_offense)
+      deprecated_references = deprecated_references_for(reference_offense.reference.source_package)
+      deprecated_references.add_entries(reference_offense)
+    end
+
+    def dump_deprecated_references_files
+      @deprecated_references.each do |_, deprecated_references_file|
+        deprecated_references_file.dump
+      end
+    end
+
+    sig { returns(T::Boolean) }
+    def stale_violations?
+      @deprecated_references.values.any?(&:stale_violations?)
+    end
+
+    sig { returns(T::Boolean) }
+    def new_offenses?
+      @deprecated_references.values.any?(&:new_offenses?)
+    end
+
+    sig do
+      params(offense: Packwerk::ReferenceOffense)
+        .returns(T::Boolean)
+    end
+    def listed?(offense)
+      deprecated_references = deprecated_references_for(offense.reference.source_package)
+      deprecated_references.listed?(offense)
     end
 
     private

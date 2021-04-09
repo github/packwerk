@@ -16,24 +16,14 @@ module Packwerk
 
     sig do
       override
-        .params(reference: Packwerk::Reference, reference_lister: Packwerk::ReferenceLister)
+        .params(reference: Packwerk::Reference)
         .returns(T::Boolean)
     end
-    def invalid_reference?(reference, reference_lister)
+    def invalid_reference?(reference)
       return false unless reference.source_package
       return false unless reference.source_package.enforce_dependencies?
       return false if reference.source_package.dependency?(reference.constant.package)
-      return false if reference_lister.listed?(reference, violation_type: violation_type)
       true
-    end
-
-    sig { override.params(reference: Packwerk::Reference).returns(String) }
-    def message_for(reference)
-      "Dependency violation: #{reference.constant.name} belongs to '#{reference.constant.package}', but " \
-        "'#{reference.source_package}' does not specify a dependency on " \
-        "'#{reference.constant.package}'.\n" \
-        "Are we missing an abstraction?\n" \
-        "Is the code making the reference, and the referenced constant, in the right packages?\n"
     end
   end
 end

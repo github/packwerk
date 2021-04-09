@@ -4,7 +4,6 @@
 require "packwerk/node"
 require "packwerk/offense"
 require "packwerk/checker"
-require "packwerk/reference_lister"
 
 module Packwerk
   class NodeProcessor
@@ -13,19 +12,17 @@ module Packwerk
     sig do
       params(
         reference_extractor: ReferenceExtractor,
-        reference_lister: ReferenceLister,
         filename: String,
         checkers: T::Array[Checker]
       ).void
     end
-    def initialize(reference_extractor:, reference_lister:, filename:, checkers:)
+    def initialize(reference_extractor:, filename:, checkers:)
       @reference_extractor = reference_extractor
-      @reference_lister = reference_lister
       @filename = filename
       @checkers = checkers
     end
 
-    sig { params(node: Parser::AST::Node, ancestors: T::Array[Parser::AST::Node]).returns(T.nilable(Offense)) }
+    sig { params(node: Parser::AST::Node, ancestors: T::Array[Parser::AST::Node]).returns(T.nilable(T::Array[Offense])) }
     def call(node, ancestors)
       if Node.method_call?(node) || Node.constant?(node)
         reference = @reference_extractor.reference_from_node(node, ancestors: ancestors, file_path: @filename)
@@ -36,26 +33,15 @@ module Packwerk
     private
 
     def check_reference(reference, node)
-      return nil unless (message = failed_check(reference))
-
-      constant = reference.constant
-
-      Packwerk::Offense.new(
-        location: Node.location(node),
-        file: reference.relative_path,
-        message: <<~EOS
-          #{message}
-          Inference details: this is a reference to #{constant.name} which seems to be defined in #{constant.location}.
-          To receive help interpreting or resolving this error message, see: https://github.com/Shopify/packwerk/blob/main/TROUBLESHOOT.md#Troubleshooting-violations
-        EOS
-      )
-    end
-
-    def failed_check(reference)
-      failing_checker = @checkers.find do |checker|
-        checker.invalid_reference?(reference, @reference_lister)
+      @checkers.each_with_object([]) do |checker, violations|
+        next unless checker.invalid_reference?(reference)
+        offense = Packwerk::ReferenceOffense.new(
+          location: Node.location(node),
+          reference: reference,
+          violation_type: checker.violation_type
+        )
+        violations << offense
       end
-      failing_checker&.message_for(reference)
     end
   end
 end

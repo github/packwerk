@@ -13,8 +13,6 @@ require "packwerk/inflector"
 require "packwerk/output_style"
 require "packwerk/output_styles/plain"
 require "packwerk/run_context"
-require "packwerk/updating_deprecated_references"
-require "packwerk/checking_deprecated_references"
 require "packwerk/commands/detect_stale_violations_command"
 require "packwerk/commands/update_deprecations_command"
 require "packwerk/commands/offense_progress_marker"
@@ -38,10 +36,7 @@ module Packwerk
       @err_out = err_out
       @style = style
       @configuration = configuration || Configuration.from_path
-      @run_context = run_context || Packwerk::RunContext.from_configuration(
-        @configuration,
-        reference_lister: ::Packwerk::CheckingDeprecatedReferences.new(@configuration.root_path),
-      )
+      @run_context = run_context || Packwerk::RunContext.from_configuration(@configuration)
       @progress_formatter = Formatters::ProgressFormatter.new(@out, style: style)
     end
 
@@ -164,12 +159,18 @@ module Packwerk
 
       @progress_formatter.started(files)
 
-      all_offenses = T.let([], T.untyped)
+      cached_deprecated_references = CacheDeprecatedReferences.new(@configuration.root_path)
+      new_offenses = T.let([], T.untyped)
       execution_time = Benchmark.realtime do
-        files.each do |path|
+        new_offenses = Parallel.flat_map(files) do |path|
           @run_context.process_file(file: path).tap do |offenses|
+            offenses.reject! do |offense|
+              next false unless offense.is_a?(Packwerk::ReferenceOffense)
+              cached_deprecated_references.listed?(offense)
+            end
+
             mark_progress(offenses: offenses, progress_formatter: @progress_formatter)
-            all_offenses.concat(offenses)
+            new_offenses.concat(offenses)
           end
         end
       rescue Interrupt
@@ -179,9 +180,9 @@ module Packwerk
 
       @progress_formatter.finished(execution_time)
       @out.puts
-      @out.puts(offenses_formatter.show_offenses(all_offenses))
+      @out.puts(offenses_formatter.show_offenses(new_offenses))
 
-      all_offenses.empty?
+      new_offenses.empty?
     end
 
     def detect_stale_violations(paths)

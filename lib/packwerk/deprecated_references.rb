@@ -5,38 +5,43 @@ require "sorbet-runtime"
 require "yaml"
 
 require "packwerk/reference"
-require "packwerk/reference_lister"
 require "packwerk/violation_type"
 
 module Packwerk
   class DeprecatedReferences
     extend T::Sig
-    include ReferenceLister
 
     sig { params(package: Packwerk::Package, filepath: String).void }
     def initialize(package, filepath)
       @package = package
       @filepath = filepath
       @new_entries = {}
+      @new_offenses = []
     end
 
+    attr_reader :new_offenses
+
     sig do
-      params(reference: Packwerk::Reference, violation_type: ViolationType)
+      params(offense: Packwerk::ReferenceOffense)
         .returns(T::Boolean)
-        .override
     end
-    def listed?(reference, violation_type:)
+    def listed?(offense)
+      reference = offense.reference
+      violation_type = offense.violation_type
       violated_constants_found = deprecated_references.dig(reference.constant.package.name, reference.constant.name)
       return false unless violated_constants_found
 
       violated_constant_in_file = violated_constants_found.fetch("files", []).include?(reference.relative_path)
       return false unless violated_constant_in_file
 
-      violated_constants_found.fetch("violations", []).include?(violation_type.serialize)
+      violated_constants_found.fetch("violations", []).include?(offense.violation_type.serialize)
     end
 
-    sig { params(reference: Packwerk::Reference, violation_type: String).void }
-    def add_entries(reference, violation_type)
+    sig { params(reference_offense: Packwerk::ReferenceOffense).void }
+    def add_entries(reference_offense)
+      new_offenses << reference_offense
+      reference = reference_offense.reference
+      violation_type = reference_offense.violation_type.serialize
       package_violations = @new_entries.fetch(reference.constant.package.name, {})
       entries_for_file = package_violations[reference.constant.name] ||= {}
 
@@ -47,6 +52,11 @@ module Packwerk
       entries_for_file["files"] << reference.relative_path.to_s
 
       @new_entries[reference.constant.package.name] = package_violations
+    end
+
+    sig { returns(T::Boolean) }
+    def new_offenses?
+      new_offenses.any? { |offense| !listed?(offense) }
     end
 
     sig { returns(T::Boolean) }

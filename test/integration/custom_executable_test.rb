@@ -60,10 +60,9 @@ module Packwerk
         deprecated_reference_content_after_update = read_deprecated_references
         expected_output = <<~EOS
           📦 Packwerk is inspecting 12 files
-          ............
+
           📦 Finished in \\d+\\.\\d+ seconds
 
-          No offenses detected 🎉
           ✅ `deprecated_references.yml` has been updated.
         EOS
 
@@ -80,7 +79,7 @@ module Packwerk
           file.write("class TimelineComment; belongs_to :order; end")
           file.flush
 
-          assert_successful_run("update-deprecations")
+          refute_successful_run("update-deprecations")
 
           assert(File.exist?(timeline_deprecated_reference_path),
             "expected new deprecated_reference for timeline package to be created")
@@ -95,10 +94,9 @@ module Packwerk
             read_deprecated_references.reject { |k, _v| k.match?(timeline_deprecated_reference_path) }
           expected_output = <<~EOS
             📦 Packwerk is inspecting 13 files
-            .............
+
             📦 Finished in \\d+\\.\\d+ seconds
 
-            No offenses detected 🎉
             ✅ `deprecated_references.yml` has been updated.
           EOS
 

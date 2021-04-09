@@ -25,8 +25,7 @@ module Packwerk
 
       configuration = Configuration.new
       run_context = RunContext.from_configuration(
-        configuration,
-        reference_lister: CheckingDeprecatedReferences.new(configuration.root_path)
+        configuration
       )
       run_context.stubs(:process_file).at_least_once.returns([offense])
 
@@ -39,7 +38,7 @@ module Packwerk
 
       success = cli.execute_command(["check", file_path])
 
-      assert_includes string_io.string, violation_message
+      assert_includes string_io.string, offense.to_s
       assert_includes string_io.string, "1 offense detected"
       assert_includes string_io.string, "E\n"
       refute success
@@ -53,8 +52,7 @@ module Packwerk
 
       configuration = Configuration.new
       run_context = RunContext.from_configuration(
-        configuration,
-        reference_lister: CheckingDeprecatedReferences.new(configuration.root_path)
+        configuration
       )
       run_context.stubs(:process_file)
         .at_least(2)
@@ -71,7 +69,6 @@ module Packwerk
       success = cli.execute_command(["check", file_path])
 
       assert_includes string_io.string, "Packwerk is inspecting 3 files"
-      assert_includes string_io.string, "E\n"
       assert_includes string_io.string, interrupt_message
       assert_includes string_io.string, violation_message
       assert_includes string_io.string, "1 offense detected"
