@@ -28,15 +28,12 @@ module Packwerk
         @configuration = configuration
         @progress_formatter = progress_formatter
         @offenses_formatter = offenses_formatter
-        @updating_deprecated_references = T.let(nil, T.nilable(UpdatingDeprecatedReferences))
         @run_context = T.let(nil, T.nilable(RunContext))
       end
 
       sig { returns(Result) }
       def run
         @progress_formatter.started(@files)
-
-        all_offenses = T.let([], T.untyped)
         execution_time = Benchmark.realtime do
           all_offenses = @files.flat_map do |path|
             run_context.process_file(file: path).tap do |offenses|
@@ -44,11 +41,17 @@ module Packwerk
             end
           end
 
+          updating_deprecated_references ||= UpdatingDeprecatedReferences.new(@configuration.root_path)
+          all_offenses.each do |offense|
+            next unless offense.respond_to?(:reference)
+            updating_deprecated_references.listed?(offense.reference, violation_type: offense.violation_type)
+          end
+
           updating_deprecated_references.dump_deprecated_references_files
         end
 
         @progress_formatter.finished(execution_time)
-        calculate_result(all_offenses)
+        Result.new(message: "✅ `deprecated_references.yml` has been updated.", status: true)
       end
 
       private
@@ -56,22 +59,6 @@ module Packwerk
       sig { returns(RunContext) }
       def run_context
         @run_context ||= RunContext.from_configuration(@configuration)
-      end
-
-      sig { returns(UpdatingDeprecatedReferences) }
-      def updating_deprecated_references
-        @updating_deprecated_references ||= UpdatingDeprecatedReferences.new(@configuration.root_path)
-      end
-
-      sig { params(all_offenses: T::Array[T.nilable(::Packwerk::Offense)]).returns(Result) }
-      def calculate_result(all_offenses)
-        result_status = all_offenses.empty?
-        message = <<~EOS
-          #{@offenses_formatter.show_offenses(all_offenses)}
-          ✅ `deprecated_references.yml` has been updated.
-        EOS
-
-        Result.new(message: message, status: result_status)
       end
     end
   end

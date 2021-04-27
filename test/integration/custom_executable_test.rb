@@ -63,7 +63,6 @@ module Packwerk
           ............
           📦 Finished in \\d+\\.\\d+ seconds
 
-          No offenses detected 🎉
           ✅ `deprecated_references.yml` has been updated.
         EOS
 
@@ -98,7 +97,6 @@ module Packwerk
             .............
             📦 Finished in \\d+\\.\\d+ seconds
 
-            No offenses detected 🎉
             ✅ `deprecated_references.yml` has been updated.
           EOS
 
