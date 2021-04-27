@@ -38,10 +38,7 @@ module Packwerk
       @err_out = err_out
       @style = style
       @configuration = configuration || Configuration.from_path
-      @run_context = run_context || Packwerk::RunContext.from_configuration(
-        @configuration,
-        reference_lister: ::Packwerk::CheckingDeprecatedReferences.new(@configuration.root_path),
-      )
+      @run_context = run_context || Packwerk::RunContext.from_configuration(@configuration)
       @progress_formatter = Formatters::ProgressFormatter.new(@out, style: style)
     end
 

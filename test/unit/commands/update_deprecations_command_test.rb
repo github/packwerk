@@ -7,7 +7,7 @@ module Packwerk
   module Commands
     class UpdateDeprecationsCommandTest < Minitest::Test
       test "#run returns success when there are no offenses" do
-        run_context = RunContext.new(root_path: ".", load_paths: ".", reference_lister: nil)
+        run_context = RunContext.new(root_path: ".", load_paths: ".")
         run_context.stubs(:process_file).returns([])
 
         string_io = StringIO.new

@@ -4,7 +4,6 @@
 require "packwerk/node"
 require "packwerk/reference_offense"
 require "packwerk/checker"
-require "packwerk/reference_lister"
 
 module Packwerk
   class NodeProcessor
@@ -13,14 +12,12 @@ module Packwerk
     sig do
       params(
         reference_extractor: ReferenceExtractor,
-        reference_lister: ReferenceLister,
         filename: String,
         checkers: T::Array[Checker]
       ).void
     end
-    def initialize(reference_extractor:, reference_lister:, filename:, checkers:)
+    def initialize(reference_extractor:, filename:, checkers:)
       @reference_extractor = reference_extractor
-      @reference_lister = reference_lister
       @filename = filename
       @checkers = checkers
     end
@@ -47,7 +44,7 @@ module Packwerk
 
     def failed_check(reference)
       @checkers.find do |checker|
-        checker.invalid_reference?(reference, @reference_lister)
+        checker.invalid_reference?(reference)
       end
     end
   end

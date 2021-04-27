@@ -55,10 +55,7 @@ module Packwerk
 
       sig { returns(RunContext) }
       def run_context
-        @run_context ||= RunContext.from_configuration(
-          @configuration,
-          reference_lister: updating_deprecated_references
-        )
+        @run_context ||= RunContext.from_configuration(@configuration)
       end
 
       sig { returns(UpdatingDeprecatedReferences) }

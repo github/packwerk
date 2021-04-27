@@ -19,7 +19,6 @@ module Packwerk
       setup_application_fixture
       use_template(:skeleton)
       @destination_package = Package.new(name: "destination_package", config: {})
-      @reference_lister = CheckingDeprecatedReferences.new(app_dir)
     end
 
     teardown do
@@ -42,7 +41,7 @@ module Packwerk
           )
         )
 
-      assert checker.invalid_reference?(reference, @reference_lister)
+      assert checker.invalid_reference?(reference)
     end
 
     test "ignores violations when enforcement is disabled in that package" do
@@ -61,7 +60,7 @@ module Packwerk
           )
         )
 
-      refute checker.invalid_reference?(reference, @reference_lister)
+      refute checker.invalid_reference?(reference)
     end
 
     test "allows reference to constants of a declared dependency" do
@@ -83,7 +82,7 @@ module Packwerk
           )
         )
 
-      refute checker.invalid_reference?(reference, @reference_lister)
+      refute checker.invalid_reference?(reference)
     end
 
     test "allows reference if it is in the deprecated references file" do

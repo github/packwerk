@@ -39,7 +39,7 @@ module Packwerk
       private
 
       def run_context
-        @run_context ||= Packwerk::RunContext.from_configuration(@configuration, reference_lister: reference_lister)
+        @run_context ||= Packwerk::RunContext.from_configuration(@configuration)
       end
 
       def reference_lister
