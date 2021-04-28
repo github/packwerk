@@ -30,10 +30,11 @@ module Packwerk
         configuration: T.nilable(Configuration),
         out: T.any(StringIO, IO),
         err_out: T.any(StringIO, IO),
-        style: Packwerk::OutputStyle
+        style: Packwerk::OutputStyle,
+        offenses_formatter: Packwerk::OffensesFormatter
       ).void
     end
-    def initialize(run_context: nil, configuration: nil, out: $stdout, err_out: $stderr, style: OutputStyles::Plain.new)
+    def initialize(run_context: nil, configuration: nil, out: $stdout, err_out: $stderr, style: OutputStyles::Plain.new, offenses_formatter: nil)
       @out = out
       @err_out = err_out
       @style = style
@@ -43,6 +44,7 @@ module Packwerk
         reference_lister: ::Packwerk::CheckingDeprecatedReferences.new(@configuration.root_path),
       )
       @progress_formatter = Formatters::ProgressFormatter.new(@out, style: style)
+      @offenses_formatter = offenses_formatter
     end
 
     sig { params(args: T::Array[String]).returns(T.noreturn) }

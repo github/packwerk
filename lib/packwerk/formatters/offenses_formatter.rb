@@ -7,10 +7,13 @@ require "sorbet-runtime"
 require "packwerk/inflector"
 require "packwerk/output_style"
 require "packwerk/output_styles/plain"
+require "packwerk/offenses_formatter"
 
 module Packwerk
   module Formatters
     class OffensesFormatter
+      include Packwerk::OffensesFormatter
+
       extend T::Sig
 
       sig { params(style: OutputStyle).void }
