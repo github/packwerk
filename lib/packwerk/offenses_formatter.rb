@@ -10,7 +10,7 @@ module Packwerk
 
     interface!
 
-    sig { params(offenses: T::Array[T.nilable(Offense)]).returns(String) }
+    sig { abstract.params(offenses: T::Array[T.nilable(Offense)]).returns(String) }
     def show_offenses(offenses)
     end
   end

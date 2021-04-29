@@ -21,7 +21,7 @@ module Packwerk
         @style = style
       end
 
-      sig { params(offenses: T::Array[T.nilable(Offense)]).returns(String) }
+      sig { override.params(offenses: T::Array[T.nilable(Offense)]).returns(String) }
       def show_offenses(offenses)
         return "No offenses detected 🎉" if offenses.empty?
 

@@ -31,7 +31,7 @@ module Packwerk
         out: T.any(StringIO, IO),
         err_out: T.any(StringIO, IO),
         style: Packwerk::OutputStyle,
-        offenses_formatter: Packwerk::OffensesFormatter
+        offenses_formatter: T.any(Packwerk::OffensesFormatter, NilClass)
       ).void
     end
     def initialize(
