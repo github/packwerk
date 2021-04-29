@@ -34,7 +34,14 @@ module Packwerk
         offenses_formatter: Packwerk::OffensesFormatter
       ).void
     end
-    def initialize(run_context: nil, configuration: nil, out: $stdout, err_out: $stderr, style: OutputStyles::Plain.new, offenses_formatter: nil)
+    def initialize(
+      run_context: nil,
+      configuration: nil,
+      out: $stdout,
+      err_out: $stderr,
+      style: OutputStyles::Plain.new,
+      offenses_formatter: nil
+    )
       @out = out
       @err_out = err_out
       @style = style

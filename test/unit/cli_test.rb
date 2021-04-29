@@ -180,7 +180,8 @@ module Packwerk
 
       string_io = StringIO.new
 
-      cli = ::Packwerk::Cli.new(out: string_io, configuration: configuration, run_context: run_context, offenses_formatter: offenses_formatter.new)
+      cli = ::Packwerk::Cli.new(out: string_io, configuration: configuration, run_context: run_context,
+offenses_formatter: offenses_formatter.new)
 
       # TODO: Dependency injection for a "target finder" (https://github.com/Shopify/packwerk/issues/164)
       ::Packwerk::FilesForProcessing.stubs(fetch: [file_path])
