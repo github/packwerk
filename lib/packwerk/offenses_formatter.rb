@@ -1,8 +1,6 @@
 # typed: strict
 # frozen_string_literal: true
 
-require "sorbet-runtime"
-
 module Packwerk
   module OffensesFormatter
     extend T::Sig
