@@ -3,10 +3,6 @@
 
 require "benchmark"
 
-require "packwerk/inflector"
-require "packwerk/output_style"
-require "packwerk/output_styles/plain"
-
 module Packwerk
   module Formatters
     class ProgressFormatter
@@ -44,6 +40,11 @@ module Packwerk
       def finished(execution_time)
         @out.puts
         @out.puts("📦 Finished in #{execution_time.round(2)} seconds")
+      end
+
+      def interrupted
+        @out.puts
+        @out.puts("Manually interrupted. Violations caught so far are listed below:")
       end
     end
   end

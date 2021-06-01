@@ -1,32 +1,12 @@
 # typed: true
 # frozen_string_literal: true
-require "benchmark"
-require "sorbet-runtime"
-
-require "packwerk/application_load_paths"
-require "packwerk/application_validator"
-require "packwerk/configuration"
-require "packwerk/files_for_processing"
-require "packwerk/formatters/offenses_formatter"
-require "packwerk/formatters/progress_formatter"
-require "packwerk/inflector"
-require "packwerk/output_style"
-require "packwerk/output_styles/plain"
-require "packwerk/run_context"
-require "packwerk/updating_deprecated_references"
-require "packwerk/checking_deprecated_references"
-require "packwerk/commands/detect_stale_violations_command"
-require "packwerk/commands/update_deprecations_command"
-require "packwerk/commands/offense_progress_marker"
 
 module Packwerk
   class Cli
     extend T::Sig
-    include OffenseProgressMarker
 
     sig do
       params(
-        run_context: T.nilable(Packwerk::RunContext),
         configuration: T.nilable(Configuration),
         out: T.any(StringIO, IO),
         err_out: T.any(StringIO, IO),
@@ -35,7 +15,6 @@ module Packwerk
       ).void
     end
     def initialize(
-      run_context: nil,
       configuration: nil,
       out: $stdout,
       err_out: $stderr,
@@ -46,10 +25,6 @@ module Packwerk
       @err_out = err_out
       @style = style
       @configuration = configuration || Configuration.from_path
-      @run_context = run_context || Packwerk::RunContext.from_configuration(
-        @configuration,
-        reference_lister: ::Packwerk::CheckingDeprecatedReferences.new(@configuration.root_path),
-      )
       @progress_formatter = Formatters::ProgressFormatter.new(@out, style: style)
       @offenses_formatter = offenses_formatter
     end
@@ -69,13 +44,13 @@ module Packwerk
       when "generate_configs"
         generate_configs
       when "check"
-        check(args)
+        output_result(parse_run(args).check)
       when "detect-stale-violations"
-        detect_stale_violations(args)
+        output_result(parse_run(args).detect_stale_violations)
       when "update"
         update(args)
       when "update-deprecations"
-        update_deprecations(args)
+        output_result(parse_run(args).update_deprecations)
       when "validate"
         validate(args)
       when nil, "help"
@@ -152,54 +127,10 @@ module Packwerk
 
     def update(paths)
       warn("`packwerk update` is deprecated in favor of `packwerk update-deprecations`.")
-      update_deprecations(paths)
+      output_result(parse_run(paths).update_deprecations)
     end
 
-    def update_deprecations(paths)
-      update_deprecations = Commands::UpdateDeprecationsCommand.new(
-        files: fetch_files_to_process(paths),
-        configuration: @configuration,
-        offenses_formatter: offenses_formatter,
-        progress_formatter: @progress_formatter
-      )
-      result = update_deprecations.run
-      @out.puts
-      @out.puts(result.message)
-      result.status
-    end
-
-    def check(paths)
-      files = fetch_files_to_process(paths)
-
-      @progress_formatter.started(files)
-
-      all_offenses = T.let([], T.untyped)
-      execution_time = Benchmark.realtime do
-        files.each do |path|
-          @run_context.process_file(file: path).tap do |offenses|
-            mark_progress(offenses: offenses, progress_formatter: @progress_formatter)
-            all_offenses.concat(offenses)
-          end
-        end
-      rescue Interrupt
-        @out.puts
-        @out.puts("Manually interrupted. Violations caught so far are listed below:")
-      end
-
-      @progress_formatter.finished(execution_time)
-      @out.puts
-      @out.puts(offenses_formatter.show_offenses(all_offenses))
-
-      all_offenses.empty?
-    end
-
-    def detect_stale_violations(paths)
-      detect_stale_violations = Commands::DetectStaleViolationsCommand.new(
-        files: fetch_files_to_process(paths),
-        configuration: @configuration,
-        progress_formatter: @progress_formatter
-      )
-      result = detect_stale_violations.run
+    def output_result(result)
       @out.puts
       @out.puts(result.message)
       result.status
@@ -247,6 +178,15 @@ module Packwerk
       else
         false
       end
+    end
+
+    def parse_run(paths)
+      ParseRun.new(
+        files: fetch_files_to_process(paths),
+        configuration: @configuration,
+        progress_formatter: @progress_formatter,
+        offenses_formatter: offenses_formatter
+      )
     end
 
     def offenses_formatter

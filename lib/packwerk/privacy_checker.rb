@@ -1,9 +1,6 @@
 # typed: strict
 # frozen_string_literal: true
 
-require "packwerk/violation_type"
-require "packwerk/checker"
-
 module Packwerk
   class PrivacyChecker
     extend T::Sig
@@ -16,10 +13,10 @@ module Packwerk
 
     sig do
       override
-        .params(reference: Packwerk::Reference, reference_lister: Packwerk::ReferenceLister)
+        .params(reference: Packwerk::Reference)
         .returns(T::Boolean)
     end
-    def invalid_reference?(reference, reference_lister)
+    def invalid_reference?(reference)
       return false if reference.constant.public?
 
       privacy_option = reference.constant.package.enforce_privacy
@@ -28,17 +25,7 @@ module Packwerk
       return false unless privacy_option == true ||
         explicitly_private_constant?(reference.constant, explicitly_private_constants: privacy_option)
 
-      return false if reference_lister.listed?(reference, violation_type: violation_type)
-
       true
-    end
-
-    sig { override.params(reference: Packwerk::Reference).returns(String) }
-    def message_for(reference)
-      source_desc = reference.source_package ? "'#{reference.source_package}'" : "here"
-      "Privacy violation: '#{reference.constant.name}' is private to '#{reference.constant.package}' but " \
-        "referenced from #{source_desc}.\n" \
-        "Is there a public entrypoint in '#{reference.constant.package.public_path}' that you can use instead?"
     end
 
     private

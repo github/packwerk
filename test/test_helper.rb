@@ -6,13 +6,13 @@ ENV["RAILS_ENV"] = "test"
 $LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
 ROOT = Pathname.new(__dir__).join("..").expand_path
 
-require "constant_resolver"
 require "packwerk"
 
 require "minitest/autorun"
 require "minitest/focus"
 require "mocha/minitest"
 require "support/application_fixture_helper"
+require "support/factory_helper"
 require "support/rails_application_fixture_helper"
 require "support/rails_paths"
 require "support/test_macro"

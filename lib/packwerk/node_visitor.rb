@@ -1,8 +1,6 @@
 # typed: false
 # frozen_string_literal: true
 
-require "packwerk/node"
-
 module Packwerk
   class NodeVisitor
     def initialize(node_processor:)
@@ -10,8 +8,7 @@ module Packwerk
     end
 
     def visit(node, ancestors:, result:)
-      offense = @node_processor.call(node, ancestors)
-      result << offense if offense
+      result.concat(@node_processor.call(node, ancestors))
 
       child_ancestors = [node] + ancestors
       Node.each_child(node) do |child|
