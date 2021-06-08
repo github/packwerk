@@ -42,7 +42,7 @@ module Packwerk
         return
       end
       deprecated_references = deprecated_references_for(offense.reference.source_package)
-      unless deprecated_references.add_entries(offense.reference, offense.violation_type)
+      unless deprecated_references.add_entries(offense)
         new_violations << offense
       end
     end

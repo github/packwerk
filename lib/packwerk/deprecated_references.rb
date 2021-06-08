@@ -28,8 +28,10 @@ module Packwerk
       violated_constants_found.fetch("violations", []).include?(violation_type.serialize)
     end
 
-    sig { params(reference: Packwerk::Reference, violation_type: Packwerk::ViolationType).returns(T::Boolean) }
-    def add_entries(reference, violation_type)
+    sig { params(offense: Packwerk::Offense).returns(T::Boolean) }
+    def add_entries(offense)
+      reference = offense.reference
+      violation_type = offense.violation_type
       package_violations = @new_entries.fetch(reference.constant.package.name, {})
       entries_for_file = package_violations[reference.constant.name] ||= {}
 
