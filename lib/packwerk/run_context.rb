@@ -88,6 +88,11 @@ module Packwerk
       references_and_offenses.flat_map { |reference| reference_checker.call(reference) }
     end
 
+    sig { returns(PackageSet) }
+    def package_set
+      ::Packwerk::PackageSet.load_all_from(@root_path, package_pathspec: @package_paths)
+    end
+
     private
 
     sig { returns(FileProcessor) }
@@ -119,11 +124,6 @@ module Packwerk
         load_paths: @load_paths,
         inflector: @inflector,
       )
-    end
-
-    sig { returns(PackageSet) }
-    def package_set
-      ::Packwerk::PackageSet.load_all_from(@root_path, package_pathspec: @package_paths)
     end
 
     sig { returns(T::Array[ConstantNameInspector]) }

@@ -30,6 +30,7 @@ module Packwerk
       @progress_formatter = progress_formatter
       @offenses_formatter = offenses_formatter
       @absolute_files = absolute_files
+      @run_context = Packwerk::RunContext.from_configuration(@configuration)
     end
 
     sig { returns(Result) }
@@ -45,6 +46,12 @@ module Packwerk
     sig { returns(Result) }
     def update_deprecations
       offense_collection = find_offenses
+
+      @run_context.package_set.each do |package|
+        path = File.join(package.name, "deprecated_references.yml")
+        File.delete(path) if File.exist?(path)
+      end
+
       offense_collection.dump_deprecated_references_files
 
       message = <<~EOS
@@ -75,11 +82,10 @@ module Packwerk
       offense_collection = OffenseCollection.new(@configuration.root_path)
       @progress_formatter.started(@absolute_files)
 
-      run_context = Packwerk::RunContext.from_configuration(@configuration)
       all_offenses = T.let([], T::Array[Offense])
 
       process_file = T.let(-> (absolute_file) do
-        run_context.process_file(absolute_file: absolute_file).tap do |offenses|
+        @run_context.process_file(absolute_file: absolute_file).tap do |offenses|
           failed = show_errors && offenses.any? { |offense| !offense_collection.listed?(offense) }
           update_progress(failed: failed)
         end

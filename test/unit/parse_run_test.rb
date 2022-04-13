@@ -47,6 +47,21 @@ module Packwerk
       assert result.status
     end
 
+    test "#update_deprecations deletes existing deprecated_references files when all reference violations are resolved" do
+      use_template(:minimal)
+      File.write(to_app_path("deprecated_references.yml"), "fake deprecated references data")
+      assert File.exist?(to_app_path("deprecated_references.yml"))
+
+      RunContext.any_instance.stubs(:process_file).returns([])
+      parse_run = Packwerk::ParseRun.new(
+        absolute_files: ["path/of/exile.rb"],
+        configuration: Configuration.from_path
+      )
+      parse_run.update_deprecations
+
+      refute File.exist?(to_app_path("deprecated_references.yml"))
+    end
+
     test "#update_deprecations returns exit code 1 when there are offenses" do
       use_template(:minimal)
       offense = Offense.new(file: "path/of/exile.rb", message: "something")
