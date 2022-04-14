@@ -16,12 +16,33 @@ module Packwerk
     sig { returns(T::Array[String]) }
     attr_reader :dependencies
 
-    sig { params(name: String, config: T.nilable(T.any(T::Hash[T.untyped, T.untyped], FalseClass))).void }
-    def initialize(name:, config:)
+    class << self
+      extend T::Sig
+
+      sig { params(path: Pathname, root_path: String).returns(Package) }
+      def from_path(path:, root_path:)
+        config = YAML.load_file(path)
+        dep_ref_path = File.join(File.dirname(path), "deprecated_references.yml")
+        deprecated_references = Packwerk::DeprecatedReferences.from_path(dep_ref_path)
+        name = path.dirname.relative_path_from(root_path).to_s
+
+        new(name: name, config: config, deprecated_references: deprecated_references)
+      end
+    end
+
+    sig do
+      params(
+        name: String,
+        config: T.nilable(T.any(T::Hash[T.untyped, T.untyped], FalseClass)),
+        deprecated_references: Packwerk::DeprecatedReferences
+      ).void
+    end
+    def initialize(name:, config:, deprecated_references: DeprecatedReferences.new)
       @name = name
       @config = T.let(config || {}, T::Hash[T.untyped, T.untyped])
       @dependencies = T.let(Array(@config["dependencies"]).freeze, T::Array[String])
       @public_path = T.let(nil, T.nilable(String))
+      @deprecated_references = deprecated_references
     end
 
     sig { returns(T.nilable(T.any(T::Boolean, T::Array[String]))) }
@@ -96,5 +117,8 @@ module Packwerk
     def root?
       @name == ROOT_PACKAGE_NAME
     end
+
+    sig { returns(Packwerk::DeprecatedReferences) }
+    attr_reader :deprecated_references
   end
 end

@@ -13,7 +13,7 @@ module Packwerk
         path: "orders/app/jobs/orders/sweepers/purge_old_document_rows_task.rb",
         constant_name: "::Buyers::Document"
       )
-      deprecated_references = DeprecatedReferences.new(destination_package, "test/fixtures/deprecated_references.yml")
+      deprecated_references = DeprecatedReferences.new(YAML.load_file("test/fixtures/deprecated_references.yml"))
 
       assert deprecated_references.listed?(
         violated_reference,
@@ -21,30 +21,19 @@ module Packwerk
       )
     end
 
-    test "#listed? returns false if the list cannot be read" do
-      violated_reference = build_reference(
-        destination_package: destination_package,
-        path: "orders/app/jobs/orders/sweepers/purge_old_document_rows_task.rb",
-        constant_name: "::Buyers::Document"
-      )
-      deprecated_references = DeprecatedReferences.new(
-        destination_package,
+    test ".from_path returns an empty DeprecatedReferences when file is invalid" do
+      refute_nil DeprecatedReferences.from_path(
         "test/fixtures/deprecated_references_with_conflicts.yml"
-      )
-
-      refute deprecated_references.listed?(
-        violated_reference,
-        violation_type: ViolationType::Dependency
       )
     end
 
     test "#stale_violations? returns true if deprecated references exist but no violations can be found in code" do
-      deprecated_references = DeprecatedReferences.new(destination_package, "test/fixtures/deprecated_references.yml")
+      deprecated_references = DeprecatedReferences.new(YAML.load_file("test/fixtures/deprecated_references.yml"))
       assert deprecated_references.stale_violations?
     end
 
-    test "#stale_violations? returns false if deprecated references does not exist but violations are found in code" do
-      deprecated_references = DeprecatedReferences.new(destination_package, "nonexistant_file_path")
+    test "#stale_violations? returns false if no deprecated references but violations are found in code" do
+      deprecated_references = DeprecatedReferences.new
       deprecated_references.add_entries(build_reference, ViolationType::Dependency)
       refute deprecated_references.stale_violations?
     end
@@ -63,7 +52,7 @@ module Packwerk
         constant_name: "::Buyers::Document"
       )
 
-      deprecated_references = DeprecatedReferences.new(package, "test/fixtures/deprecated_references.yml")
+      deprecated_references = DeprecatedReferences.new(YAML.load_file("test/fixtures/deprecated_references.yml"))
       deprecated_references.add_entries(first_violated_reference, Packwerk::ViolationType::Dependency)
       deprecated_references.add_entries(second_violated_reference, Packwerk::ViolationType::Dependency)
       refute deprecated_references.stale_violations?
@@ -83,7 +72,7 @@ module Packwerk
         constant_name: "::Buyers::Document"
       )
 
-      deprecated_references = DeprecatedReferences.new(package, "test/fixtures/deprecated_references.yml")
+      deprecated_references = DeprecatedReferences.new(YAML.load_file("test/fixtures/deprecated_references.yml"))
       deprecated_references.add_entries(first_violated_reference, Packwerk::ViolationType::Privacy)
       deprecated_references.add_entries(second_violated_reference, Packwerk::ViolationType::Privacy)
       assert deprecated_references.stale_violations?
@@ -97,14 +86,14 @@ module Packwerk
         path: "orders/app/jobs/orders/sweepers/purge_old_document_rows_task.rb",
         constant_name: "::Buyers::Document"
       )
-      deprecated_references = DeprecatedReferences.new(package, "test/fixtures/deprecated_references.yml")
+      deprecated_references = DeprecatedReferences.new(YAML.load_file("test/fixtures/deprecated_references.yml"))
       deprecated_references.add_entries(violated_reference, ViolationType::Dependency)
       assert deprecated_references.stale_violations?
     end
 
     test "#listed? returns false if constant is not violated" do
       reference = build_reference(destination_package: destination_package)
-      deprecated_references = DeprecatedReferences.new(destination_package, "test/fixtures/deprecated_references.yml")
+      deprecated_references = DeprecatedReferences.new(YAML.load_file("test/fixtures/deprecated_references.yml"))
 
       refute deprecated_references.listed?(
         reference,
@@ -117,7 +106,7 @@ module Packwerk
         destination_package: destination_package,
         constant_name: "::Buyers::Document"
       )
-      deprecated_references = DeprecatedReferences.new(destination_package, "test/fixtures/deprecated_references.yml")
+      deprecated_references = DeprecatedReferences.new(YAML.load_file("test/fixtures/deprecated_references.yml"))
 
       refute deprecated_references.listed?(
         violated_reference,
@@ -128,10 +117,10 @@ module Packwerk
     test "#add_entries and #dump adds constant violation to file in the appropriate format" do
       Tempfile.create("test_file.yml") do |file|
         reference = build_reference
-        deprecated_references = DeprecatedReferences.new(reference.constant.package, file.path)
+        deprecated_references = DeprecatedReferences.new
 
         deprecated_references.add_entries(reference, Packwerk::ViolationType::Privacy)
-        deprecated_references.dump
+        deprecated_references.dump(file_path: file.path)
 
         expected_output = {
           reference.constant.package.name => {
@@ -155,7 +144,7 @@ module Packwerk
       }
 
       Tempfile.create("test_file.yml") do |file|
-        deprecated_references = DeprecatedReferences.new(destination_package, file.path)
+        deprecated_references = DeprecatedReferences.new
 
         first_package = Package.new(name: "a_package", config: {})
         second_package = Package.new(name: "another_package", config: {})
@@ -190,7 +179,7 @@ module Packwerk
         deprecated_references.add_entries(second_package_third_reference, Packwerk::ViolationType::Dependency)
         deprecated_references.add_entries(first_package_reference, Packwerk::ViolationType::Privacy)
 
-        deprecated_references.dump
+        deprecated_references.dump(file_path: file.path)
 
         assert_equal expected_output.to_a, YAML.load_file(file.path).to_a
       end
@@ -198,8 +187,8 @@ module Packwerk
 
     test "#dump deletes the deprecated references if there are no entries" do
       file = Tempfile.new("empty_deprecated_references.yml")
-      deprecated_references = DeprecatedReferences.new(destination_package, T.must(file.path))
-      deprecated_references.dump
+      deprecated_references = DeprecatedReferences.new
+      deprecated_references.dump(file_path: T.must(file.path))
 
       refute File.exist?(file.path)
     end

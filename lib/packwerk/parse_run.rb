@@ -52,7 +52,7 @@ module Packwerk
         File.delete(path) if File.exist?(path)
       end
 
-      parse_result.dump_deprecated_references_files
+      parse_result.dump_deprecated_references_files(@configuration.root_path)
 
       message = <<~EOS
         #{@offenses_formatter.show_offenses(parse_result.errors)}
@@ -79,7 +79,7 @@ module Packwerk
 
     sig { params(show_errors: T::Boolean).returns(ParseResult) }
     def find_offenses(show_errors: false)
-      parse_result = ParseResult.new(@configuration.root_path)
+      parse_result = ParseResult.new(@run_context.package_set)
       @progress_formatter.started(@absolute_files)
 
       all_offenses = T.let([], T::Array[Offense])

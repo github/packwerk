@@ -8,8 +8,9 @@ module Packwerk
     include FactoryHelper
 
     setup do
-      @parse_result = ParseResult.new(".")
       @offense = ReferenceOffense.new(reference: build_reference, violation_type: ViolationType::Dependency)
+      package_set = PackageSet.new([@offense.reference.source_package, @offense.reference.constant.package])
+      @parse_result = ParseResult.new(package_set)
     end
 
     test "#add_violation adds entry and returns true" do
@@ -43,7 +44,7 @@ module Packwerk
     test "#listed? returns true if constant is listed in file" do
       package = Package.new(name: "buyer", config: {})
       reference = build_reference(source_package: package)
-      deprecated_references = Packwerk::DeprecatedReferences.new(package, ".")
+      deprecated_references = Packwerk::DeprecatedReferences.new
       deprecated_references
         .stubs(:listed?)
         .with(reference, violation_type: Packwerk::ViolationType::Dependency)

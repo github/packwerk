@@ -6,15 +6,9 @@ module Packwerk
     extend T::Sig
     extend T::Helpers
 
-    sig do
-      params(
-        root_path: String,
-        deprecated_references: T::Hash[Packwerk::Package, Packwerk::DeprecatedReferences]
-      ).void
-    end
-    def initialize(root_path, deprecated_references = {})
-      @root_path = root_path
-      @deprecated_references = T.let(deprecated_references, T::Hash[Packwerk::Package, Packwerk::DeprecatedReferences])
+    sig { params(package_set: Packwerk::PackageSet).void }
+    def initialize(package_set)
+      @package_set = T.let(Set.new(package_set), T::Set[Packwerk::Package])
       @new_violations = T.let([], T::Array[Packwerk::ReferenceOffense])
       @errors = T.let([], T::Array[Packwerk::Offense])
     end
@@ -31,8 +25,12 @@ module Packwerk
     end
     def listed?(offense)
       return false unless offense.is_a?(ReferenceOffense)
+
       reference = offense.reference
-      deprecated_references_for(reference.source_package).listed?(reference, violation_type: offense.violation_type)
+      package = reference.source_package
+      raise "Unknown package #{package.name}" unless @package_set.include?(package)
+
+      package.deprecated_references.listed?(reference, violation_type: offense.violation_type)
     end
 
     sig do
@@ -43,7 +41,7 @@ module Packwerk
         @errors << offense
         return
       end
-      deprecated_references = deprecated_references_for(offense.reference.source_package)
+      deprecated_references = offense.reference.source_package.deprecated_references
       unless deprecated_references.add_entries(offense.reference, offense.violation_type)
         new_violations << offense
       end
@@ -51,34 +49,20 @@ module Packwerk
 
     sig { returns(T::Boolean) }
     def stale_violations?
-      @deprecated_references.values.any?(&:stale_violations?)
+      @package_set.any? { |package| package.deprecated_references.stale_violations? }
     end
 
-    sig { void }
-    def dump_deprecated_references_files
-      @deprecated_references.each do |_, deprecated_references_file|
-        deprecated_references_file.dump
+    sig { params(root_path: String).void }
+    def dump_deprecated_references_files(root_path)
+      @package_set.each do |package|
+        path = File.join(root_path, package.name, "deprecated_references.yml")
+        package.deprecated_references.dump(file_path: path, package: package)
       end
     end
 
     sig { returns(T::Array[Packwerk::Offense]) }
     def outstanding_offenses
       errors + new_violations
-    end
-
-    private
-
-    sig { params(package: Packwerk::Package).returns(Packwerk::DeprecatedReferences) }
-    def deprecated_references_for(package)
-      @deprecated_references[package] ||= Packwerk::DeprecatedReferences.new(
-        package,
-        deprecated_references_file_for(package),
-      )
-    end
-
-    sig { params(package: Packwerk::Package).returns(String) }
-    def deprecated_references_file_for(package)
-      File.join(@root_path, package.name, "deprecated_references.yml")
     end
   end
 end

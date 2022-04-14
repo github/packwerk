@@ -11,12 +11,25 @@ module Packwerk
       T::Hash[String, T.untyped]
     end
 
-    sig { params(package: Packwerk::Package, filepath: String).void }
-    def initialize(package, filepath)
-      @package = package
-      @filepath = filepath
+    class << self
+      extend T::Sig
+
+      sig { params(path: String).returns(DeprecatedReferences) }
+      def from_path(path)
+        dep_ref_data = begin
+          YAML.load_file(path)
+        rescue StandardError
+          {}
+        end
+        dep_ref_data = {} unless dep_ref_data.is_a?(Hash)
+        new(dep_ref_data)
+      end
+    end
+
+    sig { params(data: ENTRIES_TYPE).void }
+    def initialize(data = {})
       @new_entries = T.let({}, ENTRIES_TYPE)
-      @deprecated_references = T.let(nil, T.nilable(ENTRIES_TYPE))
+      @deprecated_references = T.let(data, ENTRIES_TYPE)
     end
 
     sig do
@@ -24,7 +37,7 @@ module Packwerk
         .returns(T::Boolean)
     end
     def listed?(reference, violation_type:)
-      violated_constants_found = deprecated_references.dig(reference.constant.package.name, reference.constant.name)
+      violated_constants_found = @deprecated_references.dig(reference.constant.package.name, reference.constant.name)
       return false unless violated_constants_found
 
       violated_constant_in_file = violated_constants_found.fetch("files", []).include?(reference.relative_path)
@@ -51,7 +64,7 @@ module Packwerk
     sig { returns(T::Boolean) }
     def stale_violations?
       prepare_entries_for_dump
-      deprecated_references.any? do |package, package_violations|
+      @deprecated_references.any? do |package, package_violations|
         package_violations.any? do |constant_name, entries_for_file|
           new_entries_violation_types = @new_entries.dig(package, constant_name, "violations")
           return true if new_entries_violation_types.nil?
@@ -66,21 +79,23 @@ module Packwerk
       end
     end
 
-    sig { void }
-    def dump
+    sig { params(file_path: String, package: T.nilable(Packwerk::Package)).void }
+    def dump(file_path:, package: nil)
+      package_name = package.nil? ? "this package" : package.name
+
       if @new_entries.empty?
-        File.delete(@filepath) if File.exist?(@filepath)
+        File.delete(file_path) if File.exist?(file_path)
       else
         prepare_entries_for_dump
         message = <<~MESSAGE
-          # This file contains a list of dependencies that are not part of the long term plan for #{@package.name}.
+          # This file contains a list of dependencies that are not part of the long term plan for #{package_name}.
           # We should generally work to reduce this list, but not at the expense of actually getting work done.
           #
           # You can regenerate this file using the following command:
           #
-          # bin/packwerk update-deprecations #{@package.name}
+          # bin/packwerk update-deprecations #{package_name}
         MESSAGE
-        File.open(@filepath, "w") do |f|
+        File.open(file_path, "w") do |f|
           f.write(message)
           f.write(@new_entries.to_yaml)
         end
@@ -100,22 +115,6 @@ module Packwerk
       end
 
       @new_entries = @new_entries.sort.to_h
-    end
-
-    sig { returns(ENTRIES_TYPE) }
-    def deprecated_references
-      @deprecated_references ||= if File.exist?(@filepath)
-        load_yaml(@filepath)
-      else
-        {}
-      end
-    end
-
-    sig { params(filepath: String).returns(ENTRIES_TYPE) }
-    def load_yaml(filepath)
-      YAML.load_file(filepath) || {}
-    rescue Psych::Exception
-      {}
     end
   end
 end
