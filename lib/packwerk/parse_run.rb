@@ -8,10 +8,6 @@ module Packwerk
   class ParseRun
     extend T::Sig
 
-    ProcessFileProc = T.type_alias do
-      T.proc.params(path: String).returns(T::Array[Offense])
-    end
-
     sig do
       params(
         absolute_files: T::Array[String],
@@ -26,10 +22,13 @@ module Packwerk
       progress_formatter: Formatters::ProgressFormatter.new(StringIO.new),
       offenses_formatter: Formatters::OffensesFormatter.new
     )
-      @configuration = configuration
       @progress_formatter = progress_formatter
       @offenses_formatter = offenses_formatter
-      @absolute_files = absolute_files
+      @file_count = T.let(absolute_files.count, Integer)
+      @offense_collector = T.let(OffenseCollector.new(
+        absolute_files: absolute_files,
+        run_context: RunContext.from_configuration(configuration)
+      ), Packwerk::OffenseCollector)
     end
 
     sig { returns(Result) }
@@ -71,56 +70,27 @@ module Packwerk
     private
 
     sig { params(show_errors: T::Boolean).returns(OffenseCollection) }
-    def find_offenses(show_errors: false)
-      offense_collection = OffenseCollection.new(@configuration.root_path)
-      @progress_formatter.started(@absolute_files)
-
-      run_context = Packwerk::RunContext.from_configuration(@configuration)
-      all_offenses = T.let([], T::Array[Offense])
-
-      process_file = T.let(-> (absolute_file) do
-        run_context.process_file(absolute_file: absolute_file).tap do |offenses|
-          failed = show_errors && offenses.any? { |offense| !offense_collection.listed?(offense) }
-          update_progress(failed: failed)
-        end
-      end, ProcessFileProc)
+    def find_offenses(show_errors: true)
+      offense_collection = T.let(nil, T.nilable(OffenseCollection))
+      @progress_formatter.started(@file_count)
 
       execution_time = Benchmark.realtime do
-        all_offenses = if @configuration.parallel?
-          Parallel.flat_map(@absolute_files, &process_file)
-        else
-          serial_find_offenses(&process_file)
+        offense_collection = @offense_collector.find_offenses do |_, success|
+          next unless show_errors
+
+          if success
+            @progress_formatter.mark_as_inspected
+          else
+            @progress_formatter.mark_as_failed
+          end
         end
+
+        @progress_formatter.interrupted if offense_collection.interrupted?
       end
 
       @progress_formatter.finished(execution_time)
 
-      all_offenses.each { |offense| offense_collection.add_offense(offense) }
-      offense_collection
-    end
-
-    sig { params(block: ProcessFileProc).returns(T::Array[Offense]) }
-    def serial_find_offenses(&block)
-      all_offenses = T.let([], T::Array[Offense])
-      begin
-        @absolute_files.each do |absolute_file|
-          offenses = block.call(absolute_file)
-          all_offenses.concat(offenses)
-        end
-      rescue Interrupt
-        @progress_formatter.interrupted
-        all_offenses
-      end
-      all_offenses
-    end
-
-    sig { params(failed: T::Boolean).void }
-    def update_progress(failed: false)
-      if failed
-        @progress_formatter.mark_as_failed
-      else
-        @progress_formatter.mark_as_inspected
-      end
+      T.must(offense_collection)
     end
   end
 end

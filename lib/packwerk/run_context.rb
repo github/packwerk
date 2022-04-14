@@ -31,6 +31,7 @@ module Packwerk
           cache_enabled: configuration.cache_enabled?,
           cache_directory: configuration.cache_directory,
           config_path: configuration.config_path,
+          parallel: configuration.parallel?
         )
       end
     end
@@ -46,6 +47,7 @@ module Packwerk
         custom_associations: AssociationInspector::CustomAssociations,
         checkers: T::Array[ReferenceChecking::Checkers::Checker],
         cache_enabled: T::Boolean,
+        parallel: T::Boolean,
       ).void
     end
     def initialize(
@@ -57,7 +59,8 @@ module Packwerk
       package_paths: nil,
       custom_associations: [],
       checkers: DEFAULT_CHECKERS,
-      cache_enabled: false
+      cache_enabled: false,
+      parallel: true
     )
       @root_path = root_path
       @load_paths = load_paths
@@ -68,6 +71,7 @@ module Packwerk
       @cache_enabled = cache_enabled
       @cache_directory = cache_directory
       @config_path = config_path
+      @parallel = parallel
 
       @file_processor = T.let(nil, T.nilable(FileProcessor))
       @context_provider = T.let(nil, T.nilable(ConstantDiscovery))
@@ -77,18 +81,24 @@ module Packwerk
       )
     end
 
-    sig { params(absolute_file: String).returns(T::Array[Packwerk::Offense]) }
-    def process_file(absolute_file:)
-      unresolved_references_and_offenses = file_processor.call(absolute_file)
-      references_and_offenses = ReferenceExtractor.get_fully_qualified_references_and_offenses_from(
-        unresolved_references_and_offenses,
-        context_provider
-      )
-      reference_checker = ReferenceChecking::ReferenceChecker.new(@checkers)
-      references_and_offenses.flat_map { |reference| reference_checker.call(reference) }
+    sig { returns(String) }
+    attr_reader :root_path
+
+    sig { returns(T::Array[ReferenceChecking::Checkers::Checker]) }
+    attr_reader :checkers
+
+    sig { returns(T::Boolean) }
+    def parallel?
+      @parallel
     end
 
-    private
+    sig { returns(ConstantDiscovery) }
+    def context_provider
+      @context_provider ||= ::Packwerk::ConstantDiscovery.new(
+        constant_resolver: resolver,
+        packages: package_set
+      )
+    end
 
     sig { returns(FileProcessor) }
     def file_processor
@@ -101,14 +111,6 @@ module Packwerk
         context_provider: context_provider,
         root_path: @root_path,
         constant_name_inspectors: constant_name_inspectors
-      )
-    end
-
-    sig { returns(ConstantDiscovery) }
-    def context_provider
-      @context_provider ||= ::Packwerk::ConstantDiscovery.new(
-        constant_resolver: resolver,
-        packages: package_set
       )
     end
 

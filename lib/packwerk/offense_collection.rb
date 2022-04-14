@@ -17,6 +17,7 @@ module Packwerk
       @deprecated_references = T.let(deprecated_references, T::Hash[Packwerk::Package, Packwerk::DeprecatedReferences])
       @new_violations = T.let([], T::Array[Packwerk::ReferenceOffense])
       @errors = T.let([], T::Array[Packwerk::Offense])
+      @interrupted = T.let(false, T::Boolean)
     end
 
     sig { returns(T::Array[Packwerk::ReferenceOffense]) }
@@ -64,6 +65,16 @@ module Packwerk
     sig { returns(T::Array[Packwerk::Offense]) }
     def outstanding_offenses
       errors + new_violations
+    end
+
+    sig { void }
+    def interrupted!
+      @interrupted = true
+    end
+
+    sig { returns(T::Boolean) }
+    def interrupted?
+      @interrupted
     end
 
     private
