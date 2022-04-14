@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 module Packwerk
-  class OffenseCollection
+  class ParseResult
     extend T::Sig
     extend T::Helpers
 

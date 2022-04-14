@@ -4,11 +4,11 @@
 require "test_helper"
 
 module Packwerk
-  class OffenseCollectionTest < Minitest::Test
+  class ParseResultTest < Minitest::Test
     include FactoryHelper
 
     setup do
-      @offense_collection = OffenseCollection.new(".")
+      @parse_result = ParseResult.new(".")
       @offense = ReferenceOffense.new(reference: build_reference, violation_type: ViolationType::Dependency)
     end
 
@@ -17,27 +17,27 @@ module Packwerk
         .expects(:add_entries)
         .with(@offense.reference, @offense.violation_type)
 
-      @offense_collection.add_offense(@offense)
+      @parse_result.add_offense(@offense)
     end
 
     test "#stale_violations? returns true if there are stale violations" do
-      @offense_collection.add_offense(@offense)
+      @parse_result.add_offense(@offense)
 
       Packwerk::DeprecatedReferences.any_instance
         .expects(:stale_violations?)
         .returns(true)
 
-      assert_predicate @offense_collection, :stale_violations?
+      assert_predicate @parse_result, :stale_violations?
     end
 
     test "#stale_violations? returns false if no stale violations" do
-      @offense_collection.add_offense(@offense)
+      @parse_result.add_offense(@offense)
 
       Packwerk::DeprecatedReferences.any_instance
         .expects(:stale_violations?)
         .returns(false)
 
-      refute_predicate @offense_collection, :stale_violations?
+      refute_predicate @parse_result, :stale_violations?
     end
 
     test "#listed? returns true if constant is listed in file" do
@@ -54,12 +54,12 @@ module Packwerk
         .returns(deprecated_references)
 
       offense = Packwerk::ReferenceOffense.new(reference: reference, violation_type: ViolationType::Dependency)
-      assert @offense_collection.listed?(offense)
+      assert @parse_result.listed?(offense)
     end
 
     test "#listed? returns false if constant is not listed in file " do
       offense = Packwerk::ReferenceOffense.new(reference: build_reference, violation_type: ViolationType::Dependency)
-      refute @offense_collection.listed?(offense)
+      refute @parse_result.listed?(offense)
     end
   end
 end

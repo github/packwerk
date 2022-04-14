@@ -30,63 +30,63 @@ module Packwerk
       @progress_formatter = progress_formatter
       @offenses_formatter = offenses_formatter
       @absolute_files = absolute_files
-      @run_context = Packwerk::RunContext.from_configuration(@configuration)
+      @run_context = T.let(Packwerk::RunContext.from_configuration(@configuration), Packwerk::RunContext)
     end
 
     sig { returns(Result) }
     def detect_stale_violations
-      offense_collection = find_offenses
+      parse_result = find_offenses
 
-      result_status = !offense_collection.stale_violations?
-      message = @offenses_formatter.show_stale_violations(offense_collection)
+      result_status = !parse_result.stale_violations?
+      message = @offenses_formatter.show_stale_violations(parse_result)
 
       Result.new(message: message, status: result_status)
     end
 
     sig { returns(Result) }
     def update_deprecations
-      offense_collection = find_offenses
+      parse_result = find_offenses
 
       @run_context.package_set.each do |package|
         path = File.join(package.name, "deprecated_references.yml")
         File.delete(path) if File.exist?(path)
       end
 
-      offense_collection.dump_deprecated_references_files
+      parse_result.dump_deprecated_references_files
 
       message = <<~EOS
-        #{@offenses_formatter.show_offenses(offense_collection.errors)}
+        #{@offenses_formatter.show_offenses(parse_result.errors)}
         ✅ `deprecated_references.yml` has been updated.
       EOS
 
-      Result.new(message: message, status: offense_collection.errors.empty?)
+      Result.new(message: message, status: parse_result.errors.empty?)
     end
 
     sig { returns(Result) }
     def check
-      offense_collection = find_offenses(show_errors: true)
+      parse_result = find_offenses(show_errors: true)
 
       messages = [
-        @offenses_formatter.show_offenses(offense_collection.outstanding_offenses),
-        @offenses_formatter.show_stale_violations(offense_collection),
+        @offenses_formatter.show_offenses(parse_result.outstanding_offenses),
+        @offenses_formatter.show_stale_violations(parse_result),
       ]
-      result_status = offense_collection.outstanding_offenses.empty? && !offense_collection.stale_violations?
+      result_status = parse_result.outstanding_offenses.empty? && !parse_result.stale_violations?
 
       Result.new(message: messages.join("\n") + "\n", status: result_status)
     end
 
     private
 
-    sig { params(show_errors: T::Boolean).returns(OffenseCollection) }
+    sig { params(show_errors: T::Boolean).returns(ParseResult) }
     def find_offenses(show_errors: false)
-      offense_collection = OffenseCollection.new(@configuration.root_path)
+      parse_result = ParseResult.new(@configuration.root_path)
       @progress_formatter.started(@absolute_files)
 
       all_offenses = T.let([], T::Array[Offense])
 
       process_file = T.let(-> (absolute_file) do
         @run_context.process_file(absolute_file: absolute_file).tap do |offenses|
-          failed = show_errors && offenses.any? { |offense| !offense_collection.listed?(offense) }
+          failed = show_errors && offenses.any? { |offense| !parse_result.listed?(offense) }
           update_progress(failed: failed)
         end
       end, ProcessFileProc)
@@ -101,8 +101,8 @@ module Packwerk
 
       @progress_formatter.finished(execution_time)
 
-      all_offenses.each { |offense| offense_collection.add_offense(offense) }
-      offense_collection
+      all_offenses.each { |offense| parse_result.add_offense(offense) }
+      parse_result
     end
 
     sig { params(block: ProcessFileProc).returns(T::Array[Offense]) }

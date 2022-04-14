@@ -14,7 +14,7 @@ module Packwerk
   autoload :ApplicationLoadPaths
   autoload :ApplicationValidator
   autoload :AssociationInspector
-  autoload :OffenseCollection
+  autoload :ParseResult
   autoload :Cache
   autoload :Cli
   autoload :Configuration

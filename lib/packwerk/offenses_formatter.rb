@@ -12,8 +12,8 @@ module Packwerk
     def show_offenses(offenses)
     end
 
-    sig { abstract.params(offense_collection: Packwerk::OffenseCollection).returns(String) }
-    def show_stale_violations(offense_collection)
+    sig { abstract.params(parse_result: Packwerk::ParseResult).returns(String) }
+    def show_stale_violations(parse_result)
     end
   end
 end

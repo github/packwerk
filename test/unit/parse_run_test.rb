@@ -17,7 +17,7 @@ module Packwerk
 
     test "#detect_stale_violations returns expected Result when stale violations present" do
       use_template(:minimal)
-      OffenseCollection.any_instance.stubs(:stale_violations?).returns(true)
+      ParseResult.any_instance.stubs(:stale_violations?).returns(true)
       RunContext.any_instance.stubs(:process_file).returns([])
 
       parse_run = Packwerk::ParseRun.new(
@@ -32,7 +32,7 @@ module Packwerk
     test "#update_deprecations returns success when there are no offenses" do
       use_template(:minimal)
       RunContext.any_instance.stubs(:process_file).returns([])
-      OffenseCollection.any_instance.expects(:dump_deprecated_references_files).once
+      ParseResult.any_instance.expects(:dump_deprecated_references_files).once
 
       parse_run = Packwerk::ParseRun.new(
         absolute_files: ["path/of/exile.rb"],
@@ -66,7 +66,7 @@ module Packwerk
       use_template(:minimal)
       offense = Offense.new(file: "path/of/exile.rb", message: "something")
       RunContext.any_instance.stubs(:process_file).returns([offense])
-      OffenseCollection.any_instance.expects(:dump_deprecated_references_files).once
+      ParseResult.any_instance.expects(:dump_deprecated_references_files).once
 
       parse_run = Packwerk::ParseRun.new(
         absolute_files: ["path/of/exile.rb"],
@@ -118,7 +118,7 @@ module Packwerk
       use_template(:minimal)
       offense = ReferenceOffense.new(reference: build_reference, violation_type: ViolationType::Privacy)
       DeprecatedReferences.any_instance.stubs(:listed?).returns(true)
-      OffenseCollection.any_instance.stubs(:stale_violations?).returns(true)
+      ParseResult.any_instance.stubs(:stale_violations?).returns(true)
       out = StringIO.new
       parse_run = Packwerk::ParseRun.new(
         absolute_files: ["some/path.rb"],
